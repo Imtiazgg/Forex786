@@ -58,36 +58,25 @@ def fetch_forex_factory_news():
     response = requests.get(url)
     try:
         root = ET.fromstring(response.content)
-    except ET.ParseError:
+    except ET.ParseError as e:
         return []
 
+    ns = {"ff": "http://www.forexfactory.com/rss"}  # namespace
     news_data = []
     for item in root.findall("./channel/item"):
         try:
             title = item.find("title").text
             pub_time = date_parser.parse(item.find("pubDate").text)
-            currency = item.find("{http://www.forexfactory.com/rss}currency").text.strip().upper()
-            if pub_time.date() == datetime.utcnow().date():
-                news_data.append({
-                    "title": title,
-                    "time": pub_time,
-                    "currency": currency
-                })
-        except:
+            currency_elem = item.find("ff:currency", ns)
+            currency = currency_elem.text.strip().upper() if currency_elem is not None else "UNKNOWN"
+            news_data.append({
+                "title": title,
+                "time": pub_time,
+                "currency": currency
+            })
+        except Exception as e:
             continue
     return news_data
-
-# --- News impact analysis
-def analyze_impact(title):
-    title = title.lower()
-    if any(x in title for x in ["cpi", "gdp", "employment", "retail", "core", "inflation", "interest rate"]):
-        if any(w in title for w in ["increase", "higher", "rises", "strong", "beats"]):
-            return "🟢 Positive"
-        elif any(w in title for w in ["decrease", "lower", "falls", "weak", "misses"]):
-            return "🔴 Negative"
-        else:
-            return "🟡 Mixed"
-    return "⚪ Neutral"
 
 def get_today_news_with_impact(pair):
     base, quote = pair.split('/')
@@ -95,11 +84,13 @@ def get_today_news_with_impact(pair):
     today_events = []
     now_utc = datetime.utcnow()
     for n in news_events:
-        news_currency = n["currency"].strip().upper()
-        news_date = n["time"].astimezone(timezone('UTC')).date()  # UTC date
-        if news_currency == quote and news_date == now_utc.date():
+        news_currency = n.get("currency", "UNKNOWN").strip().upper()
+        news_time_utc = n["time"].astimezone(timezone('UTC'))
+        news_date_utc = news_time_utc.date()
+        # check if currency matches and news is today (UTC)
+        if news_currency == quote and news_date_utc == now_utc.date():
             impact = analyze_impact(n["title"])
-            time_str = n["time"].strftime("%H:%M")
+            time_str = news_time_utc.strftime("%H:%M")
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
     return today_events or ["—"]
 
@@ -302,4 +293,5 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
 
