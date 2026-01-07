@@ -257,8 +257,7 @@ for label, symbol in symbols.items():
 })
 column_order = ["Pair", "Price", "RSI", "ATR Status", "Trend", "Reversal Signal",
                 "Signal Type", "Confirmed Indicators", "AI Suggestion",
-                "DXY Impact","News"]
-
+                "DXY Impact", "Divergence", "Upcoming News & Impact"]  # <-- correct
 df_result = pd.DataFrame(rows)
 df_result["Score"] = df_result["AI Suggestion"].apply(lambda x: 3 if "Strong" in x else 2 if "Medium" in x else 0)
 df_sorted = df_result.sort_values(by="Score", ascending=False).drop(columns=["Score"])
@@ -298,6 +297,7 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
 
 
 
