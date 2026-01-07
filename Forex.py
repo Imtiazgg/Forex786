@@ -62,7 +62,8 @@ def fetch_forex_factory_news():
             title = item.find("title").text
             pub_time = date_parser.parse(item.find("pubDate").text)
             currency = item.find("{http://www.forexfactory.com/rss}currency").text.strip().upper()
-            if pub_time.date() == datetime.utcnow().date():
+            # Include today + upcoming news
+            if pub_time.date() >= datetime.utcnow().date():
                 news_data.append({"title": title, "time": pub_time, "currency": currency})
         except:
             continue
@@ -86,7 +87,7 @@ def get_today_news_with_impact(pair):
     for n in news_events:
         if n["currency"] == quote:
             impact = analyze_impact(n["title"])
-            time_str = n["time"].strftime("%H:%M")
+            time_str = n["time"].strftime("%Y-%m-%d %H:%M")
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
     if not today_events:
         return ["—"]
@@ -158,7 +159,6 @@ def detect_divergence(df):
     return ""
 
 def generate_ai_suggestion(price, indicators, atr, signal_type):
-    # fallback logic if signal_type is blank
     if signal_type not in ["Bullish", "Bearish"]:
         signal_type = "Neutral"
     sl = price - (atr * 1.2) if signal_type == "Bullish" else price + (atr * 1.2)
@@ -174,6 +174,7 @@ def generate_ai_suggestion(price, indicators, atr, signal_type):
     signal_txt = f"{conf} <span style='color:{color}'>{signal_type}</span> Signal @ {price:.5f}"
     return f"{signal_txt} | SL: {sl:.5f} | TP: {tp:.5f} | Confidence: {conf}"
 
+# --- Fetch news and DXY
 news_events = fetch_forex_factory_news()
 dxy_price, dxy_change = fetch_dxy_data()
 rows = []
@@ -241,6 +242,7 @@ for label, symbol in symbols.items():
         "Upcoming News & Impact": "\n".join(get_today_news_with_impact(label))
     })
 
+# --- Display Table
 column_order = ["Pair", "Price", "RSI", "ATR Status", "Trend", "Reversal Signal",
                 "Signal Type", "Confirmed Indicators", "AI Suggestion",
                 "DXY Impact", "Divergence", "Upcoming News & Impact"]
