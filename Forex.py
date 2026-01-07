@@ -82,10 +82,12 @@ def analyze_impact(title):
 
 def get_today_news_with_impact(pair):
     base, quote = pair.split('/')
+    base = base.upper()
     quote = quote.upper()
     today_events = []
     for n in news_events:
-        if n["currency"] == quote:
+        # substring match to cover Forex Factory RSS quirks
+        if base in n["currency"] or quote in n["currency"]:
             impact = analyze_impact(n["title"])
             time_str = n["time"].strftime("%Y-%m-%d %H:%M")
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
@@ -284,3 +286,4 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
