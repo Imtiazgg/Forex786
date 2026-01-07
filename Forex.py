@@ -18,14 +18,10 @@ st_autorefresh(interval=120000, key="ai_refresh")
 API_KEY = "b2a1234a9ea240f9ba85696e2a243403"
 
 symbols = {
-    "EUR/USD": "EUR/USD", "GBP/USD": "GBP/USD", "USD/JPY": "USD/JPY",
-    "AUD/USD": "AUD/USD", "USD/CAD": "USD/CAD", "USD/CHF": "USD/CHF",
-    "XAU/USD": "XAU/USD", "WTI/USD": "WTI/USD", "EUR/JPY": "EUR/JPY", "NZD/USD": "NZD/USD",
-    "EUR/GBP": "EUR/GBP", "EUR/CAD": "EUR/CAD", "GBP/JPY": "GBP/JPY",
-    "EUR/AUD": "EUR/AUD", "AUD/JPY": "AUD/JPY", "GBP/NZD": "GBP/NZD",
-    "EUR/NZD": "EUR/NZD", "XAG/USD": "XAG/USD",
+    "EUR/USD": "EUR/USD",
+    "XAU/USD": "XAU/USD",   # Gold
+    "XAG/USD": "XAG/USD",   # Silver
 }
-
 def play_rsi_alert():
     components.html("""
     <audio autoplay>
@@ -297,3 +293,4 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
