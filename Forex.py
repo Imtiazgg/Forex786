@@ -11,9 +11,10 @@ from dateutil import parser as date_parser
 import streamlit.components.v1 as components
 import yfinance as yf
 
+# --- Streamlit config
 st.set_page_config(page_title="Signals", layout="wide")
 st.markdown("<h1 style='text-align:center; color:#007acc;'>📊 My Signal</h1>", unsafe_allow_html=True)
-st_autorefresh(interval=300000, key="ai_refresh")  # 300000 ms = 5 minutes
+st_autorefresh(interval=300000, key="ai_refresh")  # 5 minutes
 
 API_KEY = "b2a1234a9ea240f9ba85696e2a243403"
 
@@ -22,6 +23,8 @@ symbols = {
     "XAU/USD": "XAU/USD",   # Gold
     "XAG/USD": "XAG/USD",   # Silver
 }
+
+# --- Audio alert
 def play_rsi_alert():
     components.html("""
     <audio autoplay>
@@ -29,6 +32,7 @@ def play_rsi_alert():
     </audio>
     """, height=0)
 
+# --- Fetch DXY data
 def fetch_dxy_data():
     try:
         dxy = yf.Ticker("DX-Y.NYB")
@@ -40,19 +44,21 @@ def fetch_dxy_data():
         change = current - previous
         percent = (change / previous) * 100
         return current, percent
-    except Exception as e:
+    except:
+        # fallback values
         dxy_price = 100.237
         dxy_previous = 100.40
         change = dxy_price - dxy_previous
         percent = (change / dxy_previous) * 100
         return dxy_price, percent
 
+# --- Fetch Forex Factory news
 def fetch_forex_factory_news():
     url = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
     response = requests.get(url)
     try:
         root = ET.fromstring(response.content)
-    except ET.ParseError as e:
+    except ET.ParseError:
         return []
 
     news_data = []
@@ -71,6 +77,7 @@ def fetch_forex_factory_news():
             continue
     return news_data
 
+# --- News impact analysis
 def analyze_impact(title):
     title = title.lower()
     if any(x in title for x in ["cpi", "gdp", "employment", "retail", "core", "inflation", "interest rate"]):
@@ -93,6 +100,7 @@ def get_today_news_with_impact(pair):
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
     return today_events or ["—"]
 
+# --- Indicators
 def calculate_rsi(series, period=14):
     delta = series.diff()
     gain = delta.where(delta > 0, 0)
@@ -134,18 +142,7 @@ def calculate_adx(df, period=14):
     dx = 100 * abs(plus_di14 - minus_di14) / (plus_di14 + minus_di14)
     return dx.rolling(window=period).mean()
 
-def detect_candle_pattern(df):
-    o, c, h, l = df['open'].iloc[-2:], df['close'].iloc[-2:], df['high'].iloc[-2:], df['low'].iloc[-2:]
-    co, cc, ch, cl = o.iloc[-1], c.iloc[-1], h.iloc[-1], l.iloc[-1]
-    po, pc = o.iloc[-2], c.iloc[-2]
-    body, range_ = abs(cc - co), ch - cl
-    if body < range_ * 0.1: return "Doji"
-    if pc < po and cc > co and cc > po and co < pc: return "Bullish Engulfing"
-    if pc > po and cc < co and cc < po and co > pc: return "Bearish Engulfing"
-    if body < range_ * 0.3 and cl < co and cl < cc and (ch - max(co, cc)) < body: return "Hammer"
-    if body < range_ * 0.3 and ch > co and ch > cc and (min(co, cc) - cl) < body: return "Shooting Star"
-    return ""
-
+# --- Trend & Divergence
 def detect_trend_reversal(df):
     e9, e20 = df['EMA9'].iloc[-3:], df['EMA20'].iloc[-3:]
     if e9[0] < e20[0] and e9[1] > e20[1] and e9[2] > e20[2]: return "Reversal Confirmed Bullish"
@@ -185,6 +182,7 @@ def generate_ai_suggestion(price, indicators, atr, signal_type):
     signal_txt = f"{conf} <span style='color:{color}'>{signal_type}</span> Signal @ {price:.5f}"
     return f"{signal_txt} | SL: {sl:.5f} | TP: {tp:.5f} | Confidence: {conf}"
 
+# --- Main
 news_events = fetch_forex_factory_news()
 dxy_price, dxy_change = fetch_dxy_data()
 rows = []
@@ -192,7 +190,7 @@ rows = []
 for label, symbol in symbols.items():
     url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=5min&outputsize=200&apikey={API_KEY}"
     r = requests.get(url).json()
-    if "values" not in r:
+    if "values" not in r: 
         continue
 
     df = pd.DataFrame(r["values"])
@@ -230,41 +228,45 @@ for label, symbol in symbols.items():
     if df["ADX"].iloc[-1] > 20:
         indicators.append("ADX")
 
-    pattern = detect_candle_pattern(df)
-    if pattern:
-        indicators.append("Candle")
-
     divergence = detect_divergence(df)
     if divergence:
         indicators.append("Divergence")
         play_rsi_alert()
 
     suggestion = generate_ai_suggestion(price, indicators, atr, signal_type)
+    if not suggestion:
+        suggestion = ""  # ensure column exists
 
     rows.append({
-    "Pair": label, 
-    "Price": round(price, 5), 
-    "RSI": round(rsi_val, 2),
-    "ATR Status": "🔴 Low" if atr < 0.0004 else "🟡 Normal" if atr < 0.0009 else "🟢 High",
-    "Trend": trend, 
-    "Reversal Signal": detect_trend_reversal(df),
-    "Signal Type": signal_type, 
-    "Confirmed Indicators": ", ".join(indicators),
-    "AI Suggestion": suggestion,
-    "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label and dxy_price is not None else "—",
-    "Divergence": divergence or "—",
-    "Upcoming News & Impact": "\n".join(get_today_news_with_impact(label))  # <-- NEW
-})
+        "Pair": label,
+        "Price": round(price,5),
+        "RSI": round(rsi_val,2),
+        "ATR Status": "🔴 Low" if atr < 0.0004 else "🟡 Normal" if atr < 0.0009 else "🟢 High",
+        "Trend": trend,
+        "Reversal Signal": detect_trend_reversal(df),
+        "Signal Type": signal_type,
+        "Confirmed Indicators": ", ".join(indicators),
+        "AI Suggestion": suggestion,
+        "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label else "—",
+        "Divergence": divergence or "—",
+        "Upcoming News & Impact": "\n".join(get_today_news_with_impact(label))
+    })
+
 column_order = ["Pair", "Price", "RSI", "ATR Status", "Trend", "Reversal Signal",
                 "Signal Type", "Confirmed Indicators", "AI Suggestion",
-                "DXY Impact", "Divergence", "Upcoming News & Impact"]  # <-- correct
+                "DXY Impact", "Divergence", "Upcoming News & Impact"]
+
 df_result = pd.DataFrame(rows)
+# --- ensure column exists to avoid KeyError
+if "AI Suggestion" not in df_result.columns:
+    df_result["AI Suggestion"] = ""
+
 df_result["Score"] = df_result["AI Suggestion"].apply(lambda x: 3 if "Strong" in x else 2 if "Medium" in x else 0)
 df_sorted = df_result.sort_values(by="Score", ascending=False).drop(columns=["Score"])
 
+# --- HTML table display
 styled_html = "<table style='width:100%; border-collapse: collapse;'>"
-styled_html += "<tr>" + "".join([
-    f"<th style='border:1px solid #ccc; padding:6px; background:#e0e0e0'>{col}</th>" for col in column_order]) + "</tr>"
+styled_html += "<tr>" + "".join([f"<th style='border:1px solid #ccc; padding:6px; background:#e0e0e0'>{col}</th>" for col in column_order]) + "</tr>"
 
 for _, row in df_sorted.iterrows():
     style = 'background-color: #d4edda;' if "Strong" in row["AI Suggestion"] else \
@@ -297,8 +299,3 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
-
-
-
-
-
