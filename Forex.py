@@ -84,13 +84,15 @@ def get_today_news_with_impact(pair):
     base, quote = pair.split('/')
     quote = quote.upper()
     today_events = []
+
     for n in news_events:
-        # Case-insensitive match aur null/empty check
-        if n.get("currency") and n["currency"].upper() == quote:
+        # Agar currency field blank hai, ya nahi mili, to consider all USD pairs
+        news_currency = n.get("currency", "").upper() or "USD"
+        if quote in news_currency:
             impact = analyze_impact(n["title"])
             time_str = n["time"].strftime("%H:%M")
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
-    # Agar koi news nahi mili
+
     if not today_events:
         today_events.append("—")
     return today_events
@@ -286,5 +288,6 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
 
 
