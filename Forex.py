@@ -91,10 +91,13 @@ def analyze_impact(title):
 
 def get_today_news_with_impact(pair):
     base, quote = pair.split('/')
-    quote = quote.upper()
+    quote = quote.strip().upper()
     today_events = []
+    now_utc = datetime.utcnow()
     for n in news_events:
-        if n["currency"] == quote:
+        news_currency = n["currency"].strip().upper()
+        news_date = n["time"].astimezone(timezone('UTC')).date()  # UTC date
+        if news_currency == quote and news_date == now_utc.date():
             impact = analyze_impact(n["title"])
             time_str = n["time"].strftime("%H:%M")
             today_events.append(f"{n['title']} ({impact}) @ {time_str}")
@@ -299,3 +302,4 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
