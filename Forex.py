@@ -4,7 +4,7 @@ from streamlit_autorefresh import st_autorefresh
 import pandas as pd
 import requests
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 import xml.etree.ElementTree as ET
 from dateutil import parser as date_parser
@@ -62,9 +62,7 @@ def fetch_forex_factory_news():
             title = item.find("title").text
             pub_time = date_parser.parse(item.find("pubDate").text)
             currency = item.find("{http://www.forexfactory.com/rss}currency").text.strip().upper()
-            # Include today + upcoming news
-            if pub_time.date() >= datetime.utcnow().date():
-                news_data.append({"title": title, "time": pub_time, "currency": currency})
+            news_data.append({"title": title, "time": pub_time, "currency": currency})
         except:
             continue
     return news_data
@@ -80,22 +78,21 @@ def analyze_impact(title):
             return "🟡 Mixed"
     return "⚪ Neutral"
 
-def get_today_news_with_impact(pair):
+def get_upcoming_news_with_impact(pair):
+    """Return news from now until next 24h for the given pair"""
     base, quote = pair.split('/')
     quote = quote.upper()
-    today_events = []
-
+    now = datetime.utcnow()
+    next_24h = now + timedelta(hours=24)
+    upcoming_events = []
     for n in news_events:
-        # Agar currency field blank hai, ya nahi mili, to consider all USD pairs
-        news_currency = n.get("currency", "").upper() or "USD"
-        if quote in news_currency:
+        if n["currency"] == quote and now <= n["time"] <= next_24h:
             impact = analyze_impact(n["title"])
-            time_str = n["time"].strftime("%H:%M")
-            today_events.append(f"{n['title']} ({impact}) @ {time_str}")
-
-    if not today_events:
-        today_events.append("—")
-    return today_events
+            time_str = n["time"].strftime("%Y-%m-%d %H:%M")
+            upcoming_events.append(f"{n['title']} ({impact}) @ {time_str}")
+    if not upcoming_events:
+        return ["—"]
+    return upcoming_events
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -155,7 +152,6 @@ def detect_divergence(df):
     recent_price_high = closes.iloc[-5:].idxmax()
     recent_rsi_low = rsis.iloc[-5:].idxmin()
     recent_rsi_high = rsis.iloc[-5:].idxmax()
-
     if recent_price_low != recent_rsi_low and closes[recent_price_low] < closes[-1] and rsis[recent_rsi_low] > rsis[-1]:
         return "Bullish Divergence"
     if recent_price_high != recent_rsi_high and closes[recent_price_high] > closes[-1] and rsis[recent_rsi_high] < rsis[-1]:
@@ -178,7 +174,6 @@ def generate_ai_suggestion(price, indicators, atr, signal_type):
     signal_txt = f"{conf} <span style='color:{color}'>{signal_type}</span> Signal @ {price:.5f}"
     return f"{signal_txt} | SL: {sl:.5f} | TP: {tp:.5f} | Confidence: {conf}"
 
-# --- Fetch news and DXY
 news_events = fetch_forex_factory_news()
 dxy_price, dxy_change = fetch_dxy_data()
 rows = []
@@ -243,16 +238,16 @@ for label, symbol in symbols.items():
         "AI Suggestion": suggestion,
         "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label and dxy_price is not None else "—",
         "Divergence": divergence or "—",
-        "Upcoming News & Impact": "\n".join(get_today_news_with_impact(label))
+        "Upcoming News & Impact": "\n".join(get_upcoming_news_with_impact(label))
     })
 
-# --- Display Table
 column_order = ["Pair", "Price", "RSI", "ATR Status", "Trend", "Reversal Signal",
                 "Signal Type", "Confirmed Indicators", "AI Suggestion",
                 "DXY Impact", "Divergence", "Upcoming News & Impact"]
 
 df_result = pd.DataFrame(rows)
 
+# --- HTML table formatting
 styled_html = "<table style='width:100%; border-collapse: collapse;'>"
 styled_html += "<tr>" + "".join([
     f"<th style='border:1px solid #ccc; padding:6px; background:#e0e0e0'>{col}</th>" for col in column_order]) + "</tr>"
@@ -288,6 +283,3 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
-
-
-
