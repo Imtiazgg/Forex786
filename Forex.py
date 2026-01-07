@@ -242,17 +242,22 @@ for label, symbol in symbols.items():
     suggestion = generate_ai_suggestion(price, indicators, atr, signal_type)
 
     rows.append({
-        "Pair": label, "Price": round(price, 5), "RSI": round(rsi_val, 2),
-        "ATR Status": "🔴 Low" if atr < 0.0004 else "🟡 Normal" if atr < 0.0009 else "🟢 High",
-        "Trend": trend, "Reversal Signal": detect_trend_reversal(df),
-        "Signal Type": signal_type, "Confirmed Indicators": ", ".join(indicators),
-        "Candle Pattern": pattern or "—", "AI Suggestion": suggestion,
-        "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label and dxy_price is not None else "—",
-        "Divergence": divergence or "—"
-    })
+    "Pair": label, 
+    "Price": round(price, 5), 
+    "RSI": round(rsi_val, 2),
+    "ATR Status": "🔴 Low" if atr < 0.0004 else "🟡 Normal" if atr < 0.0009 else "🟢 High",
+    "Trend": trend, 
+    "Reversal Signal": detect_trend_reversal(df),
+    "Signal Type": signal_type, 
+    "Confirmed Indicators": ", ".join(indicators),
+    "AI Suggestion": suggestion,
+    "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label and dxy_price is not None else "—",
+    "Divergence": divergence or "—",
+    "Upcoming News & Impact": "\n".join(get_today_news_with_impact(label))  # <-- NEW
+})
 column_order = ["Pair", "Price", "RSI", "ATR Status", "Trend", "Reversal Signal",
                 "Signal Type", "Confirmed Indicators", "AI Suggestion",
-                "DXY Impact"]
+                "DXY Impact","News"]
 
 df_result = pd.DataFrame(rows)
 df_result["Score"] = df_result["AI Suggestion"].apply(lambda x: 3 if "Strong" in x else 2 if "Medium" in x else 0)
@@ -293,6 +298,7 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
 
 
 
