@@ -13,7 +13,7 @@ import yfinance as yf
 
 st.set_page_config(page_title="Signals", layout="wide")
 st.markdown("<h1 style='text-align:center; color:#007acc;'>📊 My Signal</h1>", unsafe_allow_html=True)
-st_autorefresh(interval=120000, key="ai_refresh")
+st_autorefresh(interval=300000, key="ai_refresh")  # 300000 ms = 5 minutes
 
 API_KEY = "b2a1234a9ea240f9ba85696e2a243403"
 
@@ -293,4 +293,5 @@ st.markdown(styled_html, unsafe_allow_html=True)
 st.caption(f"Timeframe: 5-Min | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.text(f"Scanned Pairs: {len(rows)}")
 st.text(f"Strong Signals Found: {len([r for r in rows if 'Strong' in r['AI Suggestion']])}")
+
 
