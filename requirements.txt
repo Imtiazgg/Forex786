@@ -7,3 +7,5 @@ streamlit-autorefresh
 pytz
 yfinance
 ta
+python-dateutil
+yfinance
