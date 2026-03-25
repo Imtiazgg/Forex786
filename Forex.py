@@ -311,7 +311,6 @@ def generate_ai_suggestion(price, indicators, atr, signal_type, smart_signal):
     return f"{signal_txt} | SL: {sl:.5f} | TP: {tp:.5f} | Confidence: {conf}"
 
 
-news_events = fetch_forex_factory_news()
 dxy_price, dxy_change = fetch_dxy_data()
 rows = []
 
@@ -374,11 +373,6 @@ for label, symbol in symbols.items():
         if df["ADX"].iloc[-1] > 20:
             indicators.append("ADX Strong")
 
-        divergence = detect_divergence(df)
-        if divergence:
-            indicators.append("Divergence")
-            play_rsi_alert()
-
         smart_signal, smart_reason = get_smart_money_signal(df, trend)
         liquidity_status = get_liquidity_status(df)
 
@@ -402,9 +396,7 @@ for label, symbol in symbols.items():
             "Confirmed Indicators": ", ".join(indicators),
             "AI Suggestion": suggestion,
             "DXY Impact": f"{dxy_price:.2f} ({dxy_change:+.2f}%)" if "USD" in label and dxy_price is not None else "—",
-            "Divergence": divergence or "—",
-            "Upcoming News & Impact": "\n".join(get_upcoming_news_with_impact(label))
-        })
+            })
 
     except Exception as e:
         st.warning(f"{label} data fetch error: {e}")
@@ -414,7 +406,7 @@ column_order = [
     "Sweep High", "Sweep Low", "BOS Up", "BOS Down",
     "Smart Money Signal", "Smart Reason",
     "Reversal Signal", "Signal Type", "Confirmed Indicators",
-    "AI Suggestion", "DXY Impact", "Divergence", "Upcoming News & Impact"
+    "AI Suggestion", "DXY Impact"
 ]
 
 df_result = pd.DataFrame(rows)
