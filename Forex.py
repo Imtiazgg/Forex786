@@ -16,8 +16,7 @@ st_autorefresh(interval=300000, key="ai_refresh")  # 5-min refresh
 
 # Prefer putting this in .streamlit/secrets.toml as:
 # TWELVEDATA_API_KEY = "your_api_key"
-API_KEY = st.secrets.get("TWELVEDATA_API_KEY", "b2a1234a9ea240f9ba85696e2a243403")
-
+API_KEY = st.secrets["TWELVEDATA_API_KEY"]
 symbols = {
     "EUR/USD": "EUR/USD",
     "XAU/USD": "XAU/USD",
